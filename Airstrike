@@ -1,0 +1,48 @@
+# Project Part 3 - Airstrike
+# Author(s): 
+# Course: CS110, Fall 2021
+# Final Turn-in Options: 
+# DOCUMENTATION:
+
+import random
+import drone_api
+from cs110 import autograder
+from drone_api import set_destination
+from drone_api import get_x_location
+from drone_api import get_y_location
+from drone_api import destination_reached
+from drone_api import taking_off
+from drone_api import mission_complete
+from drone_api import engage_hyperspeed
+from drone_api import engage_plaidspeed
+from drone_api import get_scan_results
+from drone_api import intel_report
+from drone_api import deploy_air_to_ground
+from drone_api import get_bomb_inventory
+from drone_api import ignore_drone_damage
+from drone_api import get_drone_health
+
+
+# MAP_SEED = "two"
+# MAP_SEED = "three"
+# MAP_SEED = "five"
+# MAP_SEED = "SAM-protected"
+MAP_SEED = "test range"
+
+# 1-min scans, 2-min bomber dmg, 3-varying bomb damage, 4-Advanced SAMs, 5-limited bomb capacity
+# include desired mode numbers in list variable below
+challenge_modes = []
+
+def drone_recon():
+    ignore_drone_damage()
+
+def drone_bomber():
+    set_destination(1400, 250)
+    if(get_x_location()>=1400):
+        deploy_air_to_ground(1400,250)
+
+# This loads the simulation scenario
+# DO NOT TOUCH
+if __name__ == "__main__":
+    import Scenario3
+    
