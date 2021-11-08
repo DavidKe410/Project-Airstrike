@@ -35,25 +35,54 @@ challenge_modes = []
 
 base_uniqueID = []
 base_coordinates = []
+SAM_ID = []
+SAM_coordinates = []
 
-def locate_bases(targets):
+# Locates and stores the ID's and coordinates of unique bases and SAM sites into global lists
+# Parameter: 2D list (scanned results)
+# Return: None
+def locate_targets(targets):
     for target in targets:
         if target[0] == 'base':
             if base_uniqueID.count(target[7]) == 0:
                 base_uniqueID.append(target[7])
-                base_location = [int(target[5]), int(target[6])]
+                base_location = [target[5], target[6]]
                 base_coordinates.append(base_location)
+        elif target[0] == 'SAM':
+            if SAM_ID.count(target[7]) == 0:
+                SAM_ID.append(target[7])
+                SAM_location = [target[5], target[6]]
+                SAM_coordinates.append(SAM_location)
+
+# Finds the distance between 2 sets of coordinates
+# Parameters: 4 integers (2 sets of x, y coordinates)
+# Return: float
+def distance_from(x, y, x2, y2):
+    return ((x-x2)**2 + (y-y2)**2)**0.5
+
+# Identifies closest SAM site and tells whether the drone is inside its range
+# Parameters: 2 integers (x and y of either drone)
+# Return: boolean
+def within_SAM_range(d_x, d_y):
+    i = 0
+    for n in range(len(SAM_ID)):
+        if distance_from(d_x, d_y, SAM_coordinates[i][0], SAM_coordinates[i][1]) < distance_from(d_x, d_y, SAM_coordinates[n][0], SAM_coordinates[n][1]):
+            i = n
+    if len(SAM_ID) == 0:
+        return False
+    return distance_from(d_x, d_y, SAM_coordinates[i][0], SAM_coordinates[i][1]) <= 200
 
 def drone_recon():
     ignore_drone_damage()
-    engage_hyperspeed()
     
     global start_bomber
     x_drone = get_x_location()
     y_drone = get_y_location()
     num_bases = intel_report()
     
-    locate_bases(get_scan_results())
+    # If the recon drone is within SAM range, then it doesn't scan
+    if not within_SAM_range(x_drone, y_drone):
+        locate_targets(get_scan_results())
     
     if taking_off():
         set_destination(1600, 800)
