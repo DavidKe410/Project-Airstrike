@@ -1,5 +1,5 @@
 # Project Part 3 - Airstrike
-# Author(s): 
+# Author(s): Andrew Banuelos and David Ke
 # Course: CS110, Fall 2021
 # Final Turn-in Options: 
 # DOCUMENTATION:
@@ -24,62 +24,60 @@ from drone_api import get_drone_health
 
 #Lets see if pull requests work
 # MAP_SEED = "two"
-# MAP_SEED = "three"
+MAP_SEED = "three"
 # MAP_SEED = "five"
 # MAP_SEED = "SAM-protected"
-MAP_SEED = "test range"
+# MAP_SEED = "test range"
 
 # 1-min scans, 2-min bomber dmg, 3-varying bomb damage, 4-Advanced SAMs, 5-limited bomb capacity
 # include desired mode numbers in list variable below
 challenge_modes = []
 
-start_bomber = 1
 base_uniqueID = []
 base_coordinates = []
 
-def drone_recon():
-    engage_hyperspeed()
-    count_num_bases = intel_report()
-    global start_bomber
-    if len(base_uniqueID) > 0:
-            start_bomber = 0
-    ignore_drone_damage()
-    if taking_off():
-        set_destination(1600, 800)
-    x_drone = get_x_location()
-    y_drone = get_y_location()
-    for target in get_scan_results():
+def locate_bases(targets):
+    for target in targets:
         if target[0] == 'base':
             if base_uniqueID.count(target[7]) == 0:
                 base_uniqueID.append(target[7])
                 base_location = [int(target[5]), int(target[6])]
                 base_coordinates.append(base_location)
+
+def drone_recon():
+    ignore_drone_damage()
+    engage_hyperspeed()
+    
+    global start_bomber
+    x_drone = get_x_location()
+    y_drone = get_y_location()
+    num_bases = intel_report()
+    
+    locate_bases(get_scan_results())
+    
+    if taking_off():
+        set_destination(1600, 800)
     if destination_reached() and x_drone == 1600 and y_drone == 800:
         set_destination(1600, 200)
     if destination_reached() and x_drone == 1600 and y_drone == 200:
             set_destination(600, 500)
             
 def drone_bomber():
-    count_num_bases = intel_report()
     ignore_drone_damage()
-    global start_bomber_bomber
+    num_bases = intel_report()
     num_bombs = get_bomb_inventory()
-    if start_bomber == 0:
-        x_drone = get_x_location()
-        y_drone = get_y_location()
-        if x_drone == 150 and y_drone == 200:
-            set_destination(base_coordinates[0][0], base_coordinates[0][1])
-        if len(base_uniqueID) == count_num_bases:
-            if destination_reached() and x_drone == base_coordinates[0][0] and y_drone == base_coordinates[0][1]:
-                 deploy_air_to_ground(base_coordinates[0][0], base_coordinates[0][1])
-                 set_destination(base_coordinates[1][0], base_coordinates[1][1])
-            if destination_reached() and x_drone == base_coordinates[1][0] and y_drone == base_coordinates[1][1]:
-                deploy_air_to_ground(base_coordinates[1][0], base_coordinates[1][1])
-                set_destination(base_coordinates[2][0], base_coordinates[2][1])
-            if destination_reached() and x_drone == base_coordinates[2][0] and y_drone == base_coordinates[2][1]:
-                deploy_air_to_ground(base_coordinates[2][0], base_coordinates[2][1])
-                if num_bombs ==7:
-                    mission_complete()
+    x_drone = get_x_location()
+    y_drone = get_y_location()
+
+    if len(base_coordinates) > 0:
+        base_x = base_coordinates[0][0]
+        base_y = base_coordinates[0][1]
+        set_destination(base_x, base_y)        
+        if destination_reached() and x_drone == base_x and y_drone == base_y:
+            deploy_air_to_ground(base_x, base_y)
+            del base_coordinates[0]
+    if num_bombs == 10-num_bases:
+        mission_complete()
 
 # This loads the simulation scenario
 # DO NOT TOUCH
