@@ -38,6 +38,9 @@ base_coordinates = []
 SAM_ID = []
 SAM_coordinates = []
 
+recon_x = -1
+recon_y = -1
+
 # Locates and stores the ID's and coordinates of unique bases and SAM sites into global lists
 # Parameter: 2D list (scanned results)
 # Return: None
@@ -75,9 +78,11 @@ def within_SAM_range(d_x, d_y):
 def drone_recon():
     ignore_drone_damage()
     
-    global start_bomber
+    global start_bomber, recon_x, recon_y
     x_drone = get_x_location()
     y_drone = get_y_location()
+    recon_x = x_drone
+    recon_y = y_drone
     num_bases = intel_report()
     
     # If the recon drone is within SAM range, then it doesn't scan
@@ -102,9 +107,11 @@ def drone_bomber():
         base_x = base_coordinates[0][0]
         base_y = base_coordinates[0][1]
         set_destination(base_x, base_y)        
-        if destination_reached() and x_drone == base_x and y_drone == base_y:
+        if (destination_reached() and x_drone == base_x and y_drone == base_y) or distance_from(x_drone, y_drone, base_x, base_y) <= 100:
             deploy_air_to_ground(base_x, base_y)
             del base_coordinates[0]
+    else:
+        set_destination(recon_x, recon_y)
     if num_bombs == 10-num_bases:
         mission_complete()
 
