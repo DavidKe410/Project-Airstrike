@@ -37,9 +37,7 @@ base_uniqueID = []
 base_coordinates = []
 SAM_ID = []
 SAM_coordinates = []
-
-recon_x = -1
-recon_y = -1
+SAM_RADIUS = 200
 
 # Locates and stores the ID's and coordinates of unique bases and SAM sites into global lists
 # Parameter: 2D list (scanned results)
@@ -67,13 +65,44 @@ def distance_from(x, y, x2, y2):
 # Parameters: 2 integers (x and y of either drone)
 # Return: boolean
 def within_SAM_range(d_x, d_y):
+    global SAM_RADIUS
     i = 0
     for n in range(len(SAM_ID)):
         if distance_from(d_x, d_y, SAM_coordinates[i][0], SAM_coordinates[i][1]) < distance_from(d_x, d_y, SAM_coordinates[n][0], SAM_coordinates[n][1]):
             i = n
     if len(SAM_ID) == 0:
         return False
-    return distance_from(d_x, d_y, SAM_coordinates[i][0], SAM_coordinates[i][1]) <= 200
+    return distance_from(d_x, d_y, SAM_coordinates[i][0], SAM_coordinates[i][1]) <= SAM_RADIUS
+
+# Finds the line equation of the drones path, then finds whether it intersects any of the SAM sites
+# It does this by plugging in the equation of the line into the equation of the circle and solving for x
+# Since it simplifies to a quadratic equation, if the determinant is negative, it doesn't intersect (b/c sqrt(neg)-->DNE)
+# Parameters: 4 integers (2 sets of x,y coordinates for the drone and 1 for a base)
+# Returns a list of SAM site indexs that intersect the drones path
+def intersects_SAM_range(d_x, d_y, b_x, b_y):
+# Since this is still progress, the return [] just exits out immediately
+    return []
+    intersected_SAMs = []
+    index = 0
+    
+    # (x-x0)^2 + (y-y0)^2 = r^2
+    r = SAM_RADIUS
+    # y = mx + y_intercept
+    m = (d_y-b_y)/(d_x-b_x)
+    y_intercept = d_y-m*d_x
+    
+    for sam in SAM_coordinates:
+        # ax^2 + bx + c
+        a = m**2 + 1
+        b = 2*(y_intercept-sam[1])*m - 2*sam[0]
+        c = sam[0]**2 + (y_intercept - sam[1])**2 - r**2
+        # d = b^2 - 4ac, from quadratic equation
+        determinant = b**2 - 4*a*c
+        if determinant > 0:
+            intersected_SAMs.append(index)
+        index += 1
+    return intersected_SAMs
+
 
 def drone_recon():
     ignore_drone_damage()
@@ -81,8 +110,6 @@ def drone_recon():
     global start_bomber, recon_x, recon_y
     x_drone = get_x_location()
     y_drone = get_y_location()
-    recon_x = x_drone
-    recon_y = y_drone
     num_bases = intel_report()
     
     # If the recon drone is within SAM range, then it doesn't scan
@@ -106,12 +133,12 @@ def drone_bomber():
     if len(base_coordinates) > 0:
         base_x = base_coordinates[0][0]
         base_y = base_coordinates[0][1]
-        set_destination(base_x, base_y)        
-        if (destination_reached() and x_drone == base_x and y_drone == base_y) or distance_from(x_drone, y_drone, base_x, base_y) <= 100:
+        if len(intersects_SAM_range(x_drone, y_drone, base_x, base_y)) == 0:
+            set_destination(base_x, base_y)
+        if distance_from(x_drone, y_drone, base_x, base_y) <= 100:
             deploy_air_to_ground(base_x, base_y)
             del base_coordinates[0]
-    else:
-        set_destination(recon_x, recon_y)
+            
     if num_bombs == 10-num_bases:
         mission_complete()
 
