@@ -119,7 +119,7 @@ def drone_bomber():
         base_x = base_coordinates[0][0]
         base_y = base_coordinates[0][1]
         set_destination(base_x, base_y)        
-        if (destination_reached() and x_drone == base_x and y_drone == base_y) or distance_from(x_drone, y_drone, base_x, base_y) <= 100:
+        if distance_from(x_drone, y_drone, base_x, base_y) <= 100:
             deploy_air_to_ground(base_x, base_y)
             del base_coordinates[0]
     else:
