@@ -88,13 +88,25 @@ def drone_recon():
     # If the recon drone is within SAM range, then it doesn't scan
     if not within_SAM_range(x_drone, y_drone):
         locate_targets(get_scan_results())
-    
+    # recon drone now scans entire map (but I'm sure the bomber drone will always kill all bases before recon drone gets to scan all of it)
     if taking_off():
-        set_destination(1600, 800)
-    if destination_reached() and x_drone == 1600 and y_drone == 800:
-        set_destination(1600, 200)
-    if destination_reached() and x_drone == 1600 and y_drone == 200:
-            set_destination(600, 500)
+        set_destination(1025, 850)
+    if destination_reached() and x_drone == 1025 and y_drone == 850:
+        set_destination(1700, 800)
+    if destination_reached() and x_drone == 1700 and y_drone == 800:
+            set_destination(1600, 100)
+    if destination_reached() and x_drone == 1600 and y_drone == 100:
+        set_destination(1200, 150)
+    if destination_reached() and x_drone == 1200 and y_drone == 150:
+        set_destination(1200, 525)
+    if destination_reached() and x_drone == 1200 and y_drone == 525:
+        set_destination(850, 125)
+    if destination_reached() and x_drone == 850 and y_drone == 125:
+        set_destination(475, 125)
+    if destination_reached() and x_drone == 475 and y_drone == 125:
+        set_destination(475, 800)
+    if destination_reached() and x_drone == 475 and y_drone == 800:
+        set_destination(750, 800)
             
 def drone_bomber():
     ignore_drone_damage()
