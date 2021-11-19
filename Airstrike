@@ -1,8 +1,8 @@
 # Project Part 3 - Airstrike
 # Author(s): Andrew Banuelos and David Ke
 # Course: CS110, Fall 2021
-# Final Turn-in Options: 
-# DOCUMENTATION:
+# Final Turn-in Options: 3 and 5
+# DOCUMENTATION: None
 
 import random
 import drone_api
@@ -23,105 +23,166 @@ from drone_api import ignore_drone_damage
 from drone_api import get_drone_health
 
 #Lets see if pull requests work
-# MAP_SEED = "two"
-MAP_SEED = "three"
+#MAP_SEED = "two"
+# MAP_SEED = "three"
 # MAP_SEED = "five"
-# MAP_SEED = "SAM-protected"
+MAP_SEED = "SAM-protected"
 # MAP_SEED = "test range"
 
 # 1-min scans, 2-min bomber dmg, 3-varying bomb damage, 4-Advanced SAMs, 5-limited bomb capacity
 # include desired mode numbers in list variable below
-challenge_modes = []
+challenge_modes = [3, 5]
 
 
 base_uniqueID = []
-base_coordinates = []
+bases = []
+incomplete_bases = []
+SAM_ID = []
+SAM_coordinates = []
 
+arrived = False
+
+base_pass = 0
+first_bombing = 0
 bases_bombed = 0
-SAMx = 0
-SAMy = 0
 
 recon_x = -1
 recon_y = -1
 
 # Finds the distance between 2 sets of coordinates
-# Parameters: 4 integers (2 sets of x, y coordinates)
-# Return: float
-def distance_from(x, y, x2, y2):
-    return ((x-x2)**2 + (y-y2)**2)**0.5
-# looks to see if a certain point is in the radius of another. If it is, returns True, if not, returns False.
-def in_circle(x1, y1, cir_x, cir_y, radius):
-    distance = ((cir_x-x1)**2 + (cir_y-y1)**2)**.5
-    if distance <= radius:
-        return True
-    if distance > radius:
+# Parameters: 2 lists (2 sets of x, y coordinates)
+# Return: a float
+def distance_from(c_1, c_2):
+    return ((c_1[0]-c_2[0])**2 + (c_1[1]-c_2[1])**2)**0.5
+
+def update_hp(targets):
+    global bases_bombed
+    for base in incomplete_bases:
+        for target in targets:
+            if target[0] == 'base' and target[7]== base[3]:
+                if target[4] <= 0:
+                    incomplete_bases.remove(base)
+                    bases_bombed += 1
+                else:
+                    base[0] = target[4]
+
+# Locates and stores the ID's and coordinates of unique bases and SAM sites into global lists
+# Parameter: 2D list (scanned results)
+# Return: None
+def locate_targets(targets):
+    global base_pass
+    for target in targets:
+        if target[0] == 'base':
+            if base_uniqueID.count(target[7]) == 0:
+                base_uniqueID.append(target[7])
+                bases.append([target[4],target[5], target[6], target[7]])
+                base_pass +=1
+        elif target[0] == 'SAM':
+            if SAM_ID.count(target[7]) == 0:
+                SAM_ID.append(target[7])
+                SAM_location = [-1, target[5], target[6]]
+                SAM_coordinates.append(SAM_location)
+
+# Identifies closest site and tells whether the drone is inside its range
+# Parameters: 2 lists (x and y of either drone and a list of sites you want to account for)
+# Return: a boolean
+def within_range(drone_xy, sites, r):
+    if len(sites) == 0:
         return False
+    closest_site = find_closest(drone_xy, sites)
+    return distance_from(drone_xy, closest_site) <= r
+
+# Finds the closest site (Like SAM or base) to the drone
+# Parameters: 2 integer and a 2D list (x,y of drone and list of site coordinates)
+# Return: list (x,y coordinates)
+def find_closest(drone_xy, sites):
+    closest_site = sites[0]
+    for site in sites:
+        if distance_from(drone_xy, [site[1], site[2]]) < distance_from(drone_xy, [closest_site[1], closest_site[2]]):
+            closest_site = site
+    return [closest_site[1], closest_site[2]]
     
 def drone_recon():
-    ignore_drone_damage()
-    global recon_x, recon_y, SAMx, SAMy, bases_bombed
-    x_drone = get_x_location()
-    y_drone = get_y_location()
-    recon_x = x_drone
-    recon_y = y_drone
+    global recon_x, recon_y, bases_bombed, base_pass, arrived
+    drone_x = get_x_location()
+    drone_y = get_y_location()
+    recon_x = drone_x
+    recon_y = drone_y
     num_bases = intel_report()
     
-    # If the recon drone is within SAM range, then it doesn't scan
-    if in_circle(x_drone, y_drone, SAMx, SAMy, 200) == False:
-        for target in get_scan_results():
-            if target[0] == 'SAM':
-                SAMx = int(target[5])
-                SAMy = int(target[6])
-            if target[0] == 'base':
-                if base_uniqueID.count(target[7]) == 0:
-                    base_uniqueID.append(target[7])
-                    base_location = [int(target[5]), int(target[6])]
-                    base_coordinates.append(base_location)
-    #added code to end when bombed bases is equal to total number on map.
-    if bases_bombed == num_bases:
-                mission_complete()
 #drone flight path
-    if taking_off():
-        set_destination(1025, 850)
-    if destination_reached() and x_drone == 1025 and y_drone == 850:
-        set_destination(1700, 800)
-    if destination_reached() and x_drone == 1700 and y_drone == 800:
+    if base_pass != intel_report():
+        # If the recon drone is within SAM range, then it doesn't scan
+        if not within_range([drone_x, drone_y], SAM_coordinates, 200):
+            targets = get_scan_results()
+            locate_targets(targets)
+            update_hp(targets)
+        if taking_off():
+            set_destination(1025, 850)
+        if destination_reached() and drone_x == 1025 and drone_y == 850:
+            set_destination(1700, 800)
+        if destination_reached() and drone_x == 1700 and drone_y == 800:
             set_destination(1600, 100)
-    if destination_reached() and x_drone == 1600 and y_drone == 100:
-        set_destination(1200, 150)
-    if destination_reached() and x_drone == 1200 and y_drone == 150:
-        set_destination(1200, 525)
-    if destination_reached() and x_drone == 1200 and y_drone == 525:
-        set_destination(850, 125)
-    if destination_reached() and x_drone == 850 and y_drone == 125:
-        set_destination(475, 125)
-    if destination_reached() and x_drone == 475 and y_drone == 125:
-        set_destination(475, 800)
-    if destination_reached() and x_drone == 475 and y_drone == 800:
-        set_destination(750, 800)
-        
+        if destination_reached() and drone_x == 1600 and drone_y == 100:
+            set_destination(1200, 150)
+        if destination_reached() and drone_x == 1200 and drone_y == 150:
+            set_destination(1200, 525)
+        if destination_reached() and drone_x == 1200 and drone_y == 525:
+            set_destination(850, 125)
+        if destination_reached() and drone_x == 850 and drone_y == 125:
+            set_destination(475, 125)
+        if destination_reached() and drone_x == 475 and drone_y == 125:
+            set_destination(475, 800)
+        if destination_reached() and drone_x == 475 and drone_y == 800:
+            set_destination(750, 800)
+    elif len(incomplete_bases) > 0:
+        i_bx = incomplete_bases[0][1]
+        i_by = incomplete_bases[0][2]
+        set_destination(i_bx, i_by)
+        if within_range([drone_x, drone_y], incomplete_bases, 200):
+            update_hp(get_scan_results())
+        if distance_from([drone_x, drone_y], [i_bx, i_by]) <= 200:
+            arrived = True
+    else:
+        mission_complete()
+            
 def drone_bomber():
-    global bases_bombed
-    ignore_drone_damage()
-    num_bases = intel_report()
+    global bases_bombed, base_pass, arrived, first_bombing
     num_bombs = get_bomb_inventory()
-    x_drone = get_x_location()
-    y_drone = get_y_location()
+    drone_x = get_x_location()
+    drone_y = get_y_location()
+
     #added if statements to differentiate when bomber needed to resuply
     if num_bombs == 0:
         set_destination(100,500)
     elif num_bombs != 0:
-        if len(base_coordinates) > 0:
-            base_x = base_coordinates[0][0]
-            base_y = base_coordinates[0][1]
+        if len(SAM_coordinates) > 0:
+            sam_x = SAM_coordinates[0][1]
+            sam_y = SAM_coordinates[0][2]
+            set_destination(sam_x, sam_y)        
+            if distance_from([drone_x,drone_y], [sam_x, sam_y]) <= 100:
+                deploy_air_to_ground(sam_x, sam_y)
+                del SAM_coordinates[0]
+        elif len(bases) > 0:
+            base_x = bases[0][1]
+            base_y = bases[0][2]
             set_destination(base_x, base_y)        
-            if (destination_reached() and x_drone == base_x and y_drone == base_y) or distance_from(x_drone, y_drone, base_x, base_y) <= 100:
+            if distance_from([drone_x,drone_y], [base_x, base_y]) <= 100:
                 deploy_air_to_ground(base_x, base_y)
-                del base_coordinates[0]
-                #changed code
-                bases_bombed = bases_bombed +1
-    else:
-        set_destination(recon_x, recon_y)
+                incomplete_bases.append(bases[0])
+                first_bombing += 1
+                del bases[0]
+        elif len(incomplete_bases) > 0 and first_bombing == intel_report():
+            base_x = incomplete_bases[0][1]
+            base_y = incomplete_bases[0][2]
+            set_destination(base_x, base_y)        
+            if distance_from([drone_x,drone_y], [base_x, base_y]) <= 100 and arrived:
+                deploy_air_to_ground(base_x, base_y)
+                incomplete_bases.append(incomplete_bases[0])
+                del incomplete_bases[0]
+                arrived = False
+        else:
+            set_destination(recon_x, recon_y)
 
 # This loads the simulation scenario
 # DO NOT TOUCH
