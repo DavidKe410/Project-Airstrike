@@ -22,8 +22,7 @@ from drone_api import get_bomb_inventory
 from drone_api import ignore_drone_damage
 from drone_api import get_drone_health
 
-#Lets see if pull requests work
-#MAP_SEED = "two"
+# MAP_SEED = "two"
 # MAP_SEED = "three"
 # MAP_SEED = "five"
 MAP_SEED = "SAM-protected"
@@ -33,19 +32,29 @@ MAP_SEED = "SAM-protected"
 # include desired mode numbers in list variable below
 challenge_modes = [3, 5]
 
-
+# Stores unique ID of all bases so we can use .count() == 0
 base_uniqueID = []
+# Stores HP, coordinates, and unique ID
 bases = []
+# Stores HP, coordinates, and unique ID for bases not fully bombed
 incomplete_bases = []
+# Stores unique ID of SAMs
 SAM_ID = []
+# Stores coordinates of SAMs
 SAM_coordinates = []
 
+# Indicates whether the recon drone has caught up to the bomber drone
 arrived = False
 
+# Counts number of bases scanned
 base_pass = 0
+# Counts the number of bases that have been bombed at least once
 first_bombing = 0
+# Tracks number of bases that have been fully destroyed
 bases_bombed = 0
 
+# Records the position of the recon drone so the bomber can follow it
+# any time it's not bombing SAMs or bases
 recon_x = -1
 recon_y = -1
 
@@ -55,6 +64,9 @@ recon_y = -1
 def distance_from(c_1, c_2):
     return ((c_1[0]-c_2[0])**2 + (c_1[1]-c_2[1])**2)**0.5
 
+# Updates the HP of the bases that the dronw scans
+# Parameter: List of lists (list of scanned targets)
+# Return: None
 def update_hp(targets):
     global bases_bombed
     for base in incomplete_bases:
@@ -66,7 +78,8 @@ def update_hp(targets):
                 else:
                     base[0] = target[4]
 
-# Locates and stores the ID's and coordinates of unique bases and SAM sites into global lists
+# Locates and stores the HP, ID's, and coordinates of unique bases
+# and SAM sites into global lists
 # Parameter: 2D list (scanned results)
 # Return: None
 def locate_targets(targets):
@@ -84,7 +97,8 @@ def locate_targets(targets):
                 SAM_coordinates.append(SAM_location)
 
 # Identifies closest site and tells whether the drone is inside its range
-# Parameters: 2 lists (x and y of either drone and a list of sites you want to account for)
+# Parameters: 2 lists and float (x and y of either drone, a list of
+# sites you want to account for, and the search radius)
 # Return: a boolean
 def within_range(drone_xy, sites, r):
     if len(sites) == 0:
@@ -92,7 +106,7 @@ def within_range(drone_xy, sites, r):
     closest_site = find_closest(drone_xy, sites)
     return distance_from(drone_xy, closest_site) <= r
 
-# Finds the closest site (Like SAM or base) to the drone
+# Finds the closest site (Either SAM or base) to the drone
 # Parameters: 2 integer and a 2D list (x,y of drone and list of site coordinates)
 # Return: list (x,y coordinates)
 def find_closest(drone_xy, sites):
@@ -110,13 +124,14 @@ def drone_recon():
     recon_y = drone_y
     num_bases = intel_report()
     
-#drone flight path
+# Initial flight and scanning path
     if base_pass != intel_report():
-        # If the recon drone is within SAM range, then it doesn't scan
+    # If the recon drone is within SAM range, then it doesn't scan
         if not within_range([drone_x, drone_y], SAM_coordinates, 200):
             targets = get_scan_results()
             locate_targets(targets)
             update_hp(targets)
+    # Drone flight path
         if taking_off():
             set_destination(1025, 850)
         if destination_reached() and drone_x == 1025 and drone_y == 850:
@@ -135,12 +150,17 @@ def drone_recon():
             set_destination(475, 800)
         if destination_reached() and drone_x == 475 and drone_y == 800:
             set_destination(750, 800)
+# Once all the bases are scanned, we start updating the HPs of them while
+# the bomber bombs each one
     elif len(incomplete_bases) > 0:
         i_bx = incomplete_bases[0][1]
         i_by = incomplete_bases[0][2]
         set_destination(i_bx, i_by)
         if within_range([drone_x, drone_y], incomplete_bases, 200):
             update_hp(get_scan_results())
+    # Since the bomber drone is the one that reorders the list, once the recon
+    # drone catches up, it then prompts the bomber to reorder the list of bases
+    # (by setting arrived = True) as its caught up now
         if distance_from([drone_x, drone_y], [i_bx, i_by]) <= 200:
             arrived = True
     else:
@@ -152,10 +172,12 @@ def drone_bomber():
     drone_x = get_x_location()
     drone_y = get_y_location()
 
-    #added if statements to differentiate when bomber needed to resuply
+    # Added if statements to differentiate when bomber needed to resuply
     if num_bombs == 0:
         set_destination(100,500)
     elif num_bombs != 0:
+    # First priority for bombing are the SAMs, then the first run through
+    # of the bases, and then bases that weren't completely destroyed
         if len(SAM_coordinates) > 0:
             sam_x = SAM_coordinates[0][1]
             sam_y = SAM_coordinates[0][2]
@@ -166,7 +188,10 @@ def drone_bomber():
         elif len(bases) > 0:
             base_x = bases[0][1]
             base_y = bases[0][2]
-            set_destination(base_x, base_y)        
+            set_destination(base_x, base_y)
+        # Appending the bases to another list called "incomplete_bases"
+        # because adding bases and reordering the list at the same time allows
+        # for unnecessary repetition
             if distance_from([drone_x,drone_y], [base_x, base_y]) <= 100:
                 deploy_air_to_ground(base_x, base_y)
                 incomplete_bases.append(bases[0])
@@ -175,12 +200,16 @@ def drone_bomber():
         elif len(incomplete_bases) > 0 and first_bombing == intel_report():
             base_x = incomplete_bases[0][1]
             base_y = incomplete_bases[0][2]
-            set_destination(base_x, base_y)        
+            set_destination(base_x, base_y)
+        # The append(incompelte_bases[0] and the del incomplete_bases[0])
+        # allow us to cycle through the bases 1 at a time
             if distance_from([drone_x,drone_y], [base_x, base_y]) <= 100 and arrived:
                 deploy_air_to_ground(base_x, base_y)
                 incomplete_bases.append(incomplete_bases[0])
                 del incomplete_bases[0]
                 arrived = False
+        # Making use of the global recon drone coordinates, by following
+        # the recon if not bombing anything else
         else:
             set_destination(recon_x, recon_y)
 
