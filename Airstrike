@@ -24,8 +24,8 @@ from drone_api import get_drone_health
 
 # MAP_SEED = "two"
 # MAP_SEED = "three"
-# MAP_SEED = "five"
-MAP_SEED = "SAM-protected"
+MAP_SEED = "five"
+# MAP_SEED = "SAM-protected"
 # MAP_SEED = "test range"
 
 # 1-min scans, 2-min bomber dmg, 3-varying bomb damage, 4-Advanced SAMs, 5-limited bomb capacity
@@ -125,7 +125,7 @@ def drone_recon():
     num_bases = intel_report()
     
 # Initial flight and scanning path
-    if base_pass != intel_report():
+    if base_pass != intel_report() or first_bombing != base_pass:
     # If the recon drone is within SAM range, then it doesn't scan
         if not within_range([drone_x, drone_y], SAM_coordinates, 200):
             targets = get_scan_results()
@@ -150,6 +150,10 @@ def drone_recon():
             set_destination(475, 800)
         if destination_reached() and drone_x == 475 and drone_y == 800:
             set_destination(750, 800)
+    # Assuming we missed a base because of one of the moments we stopped scanning
+    # we go through the route again, assuming the bomber destroyed the SAM
+        if destination_reached() and drone_x == 750 and drone_y == 800:
+            set_destination(1025, 850)
 # Once all the bases are scanned, we start updating the HPs of them while
 # the bomber bombs each one
     elif len(incomplete_bases) > 0:
