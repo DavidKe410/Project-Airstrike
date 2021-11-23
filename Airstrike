@@ -1,6 +1,6 @@
 # Project Part 3 - Airstrike
 # Author(s): Andrew Banuelos and David Ke
-# Course: CS110, Fall 2021
+# Course: CS110, M6B, Fall 2021
 # Final Turn-in Options: 3 and 5
 # DOCUMENTATION: None
 
@@ -64,7 +64,7 @@ recon_y = -1
 def distance_from(c_1, c_2):
     return ((c_1[0]-c_2[0])**2 + (c_1[1]-c_2[1])**2)**0.5
 
-# Updates the HP of the bases that the dronw scans
+# Updates the HP of the bases that the drone scans
 # Parameter: List of lists (list of scanned targets)
 # Return: None
 def update_hp(targets):
@@ -135,27 +135,29 @@ def drone_recon():
         if taking_off():
             set_destination(1025, 850)
         if destination_reached() and drone_x == 1025 and drone_y == 850:
-            set_destination(1700, 800)
-        if destination_reached() and drone_x == 1700 and drone_y == 800:
-            set_destination(1600, 100)
-        if destination_reached() and drone_x == 1600 and drone_y == 100:
+            set_destination(1800, 800)
+        if destination_reached() and drone_x == 1800 and drone_y == 800:
+            set_destination(1800, 0)
+        if destination_reached() and drone_x == 1800 and drone_y == 0:
             set_destination(1200, 150)
         if destination_reached() and drone_x == 1200 and drone_y == 150:
+            set_destination(1480, 475)
+        if destination_reached() and drone_x == 1480 and drone_y == 475:
             set_destination(1200, 525)
         if destination_reached() and drone_x == 1200 and drone_y == 525:
-            set_destination(850, 125)
-        if destination_reached() and drone_x == 850 and drone_y == 125:
-            set_destination(475, 125)
-        if destination_reached() and drone_x == 475 and drone_y == 125:
-            set_destination(475, 800)
-        if destination_reached() and drone_x == 475 and drone_y == 800:
-            set_destination(750, 800)
+            set_destination(950, 125)
+        if destination_reached() and drone_x == 950 and drone_y == 125:
+            set_destination(455, 125)
+        if destination_reached() and drone_x == 455 and drone_y == 125:
+            set_destination(455, 870)
+        if destination_reached() and drone_x == 455 and drone_y == 870:
+            set_destination(750, 870)
     # Assuming we missed a base because of one of the moments we stopped scanning
-    # we go through the route again, assuming the bomber destroyed the SAM
-        if destination_reached() and drone_x == 750 and drone_y == 800:
+    # we go through the route again, assuming the bomber already destroyed the SAM
+        if destination_reached() and drone_x == 750 and drone_y == 870:
             set_destination(1025, 850)
 # Once all the bases are scanned, we start updating the HPs of them while
-# the bomber bombs each one
+# the bomber starts bombing each one
     elif len(incomplete_bases) > 0:
         i_bx = incomplete_bases[0][1]
         i_by = incomplete_bases[0][2]
@@ -164,17 +166,18 @@ def drone_recon():
             update_hp(get_scan_results())
     # Since the bomber drone is the one that reorders the list, once the recon
     # drone catches up, it then prompts the bomber to reorder the list of bases
-    # (by setting arrived = True) as its caught up now
+    # (by setting arrived = True) as the recon drone has caught up now
         if distance_from([drone_x, drone_y], [i_bx, i_by]) <= 200:
             arrived = True
+# Once all the bases are scanned and there are no incompletely bombed bases
     else:
+        print("Mission Complete!")
         mission_complete()
             
 def drone_bomber():
     global bases_bombed, base_pass, arrived, first_bombing
     num_bombs = get_bomb_inventory()
-    drone_x = get_x_location()
-    drone_y = get_y_location()
+    drone_xy = [get_x_location(), get_y_location()]
 
     # Added if statements to differentiate when bomber needed to resuply
     if num_bombs == 0:
@@ -186,7 +189,7 @@ def drone_bomber():
             sam_x = SAM_coordinates[0][1]
             sam_y = SAM_coordinates[0][2]
             set_destination(sam_x, sam_y)        
-            if distance_from([drone_x,drone_y], [sam_x, sam_y]) <= 100:
+            if distance_from(drone_xy, [sam_x, sam_y]) <= 100:
                 deploy_air_to_ground(sam_x, sam_y)
                 del SAM_coordinates[0]
         elif len(bases) > 0:
@@ -194,9 +197,9 @@ def drone_bomber():
             base_y = bases[0][2]
             set_destination(base_x, base_y)
         # Appending the bases to another list called "incomplete_bases"
-        # because adding bases and reordering the list at the same time allows
+        # because adding bases and reordering the list at the same time makes
         # for unnecessary repetition
-            if distance_from([drone_x,drone_y], [base_x, base_y]) <= 100:
+            if distance_from(drone_xy, [base_x, base_y]) <= 100:
                 deploy_air_to_ground(base_x, base_y)
                 incomplete_bases.append(bases[0])
                 first_bombing += 1
@@ -205,9 +208,9 @@ def drone_bomber():
             base_x = incomplete_bases[0][1]
             base_y = incomplete_bases[0][2]
             set_destination(base_x, base_y)
-        # The append(incompelte_bases[0] and the del incomplete_bases[0])
+        # The append(incomplete_bases[0] and the del incomplete_bases[0])
         # allow us to cycle through the bases 1 at a time
-            if distance_from([drone_x,drone_y], [base_x, base_y]) <= 100 and arrived:
+            if distance_from(drone_xy, [base_x, base_y]) <= 100 and arrived:
                 deploy_air_to_ground(base_x, base_y)
                 incomplete_bases.append(incomplete_bases[0])
                 del incomplete_bases[0]
