@@ -107,7 +107,7 @@ def within_range(drone_xy, sites, r):
     return distance_from(drone_xy, closest_site) <= r
 
 # Finds the closest site (Either SAM or base) to the drone
-# Parameters: 2 integer and a 2D list (x,y of drone and list of site coordinates)
+# Parameters: a list and a multi-D list (x,y of drone and list of site coordinates)
 # Return: list (x,y coordinates)
 def find_closest(drone_xy, sites):
     closest_site = sites[0]
@@ -162,8 +162,10 @@ def drone_recon():
         i_bx = incomplete_bases[0][1]
         i_by = incomplete_bases[0][2]
         set_destination(i_bx, i_by)
-        if within_range([drone_x, drone_y], incomplete_bases, 200):
-            update_hp(get_scan_results())
+        if within_range([drone_x, drone_y], incomplete_bases, 200) and not within_range([drone_x, drone_y], SAM_coordinates, 200):
+            targets = get_scan_results()
+            locate_targets(targets)
+            update_hp(targets)
     # Since the bomber drone is the one that reorders the list, once the recon
     # drone catches up, it then prompts the bomber to reorder the list of bases
     # (by setting arrived = True) as the recon drone has caught up now
@@ -209,7 +211,7 @@ def drone_bomber():
             base_y = incomplete_bases[0][2]
             set_destination(base_x, base_y)
         # The append(incomplete_bases[0] and the del incomplete_bases[0])
-        # allow us to cycle through the bases 1 at a time
+        # allow us to cycle through the bases one at a time
             if distance_from(drone_xy, [base_x, base_y]) <= 100 and arrived:
                 deploy_air_to_ground(base_x, base_y)
                 incomplete_bases.append(incomplete_bases[0])
