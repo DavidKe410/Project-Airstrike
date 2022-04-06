@@ -1,4 +1,4 @@
 # Project-Airstrike
 CS110-Project-Airstrike
 
-Finished with final Turn-in Options of 3 and 5
+Finished with final turn-in options of 3 and 5
